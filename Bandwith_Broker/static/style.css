@@ -1,0 +1,48 @@
+* {
+    padding:0;
+    margin:0;
+    list-style: none;
+    box-sizing: content-box;
+}
+h1,h3{
+    margin:10px;
+}
+h1{
+    text-align:center;
+}
+li{
+    white-space:nowrap;
+    display:flex;
+}
+.slas,
+.reservations{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding:0;
+    margin:0;
+}
+.sla,
+.resa{
+    border : solid 2px;
+    margin:10px;
+    padding :10px;
+}
+.resa p,
+.sla ul p {
+    text-align: center;
+    margin:2% 0;
+    font-size :1.1em;
+    font-weight: 500;
+}
+.resa-wrapper{
+    flex-basis:25%;
+    display:flex;
+    flex-direction: column;
+}
+.resa-wrapper h4{
+    text-align: center;
+    margin:2% 0;
+    font-size :1.2em;
+    font-weight: 600;
+}

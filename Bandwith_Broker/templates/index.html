@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Dashboard</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+
+        <h1>Bandwidth Broker Dashboard</h1>
+        <h3>SLA's state :</h3>
+        <ul class='slas'>
+            {%for sla in client_SLAs%}
+                <li class='sla'> 
+                    <ul> 
+                        <p> {{sla.id}}</p>
+                        <li> Client Network : {{sla.clientNetwork}} </li>
+                        <li> Capacity : {{sla.capacity}} Mbps </li>
+                        <li> Usage : {{sla.usage}} Mbps {{(sla.usage/sla.capacity)*100}} %</li>
+                    </ul>
+                </li>
+            {%endfor%}
+        </ul>
+
+        <h3>Reservations :</h3> 
+        
+        <div class='reservations'>
+
+            <ul class='resa-wrapper'>
+                <h4>Active reservations</h4>
+                {%for resa in Active_Reservations %}
+                    <li>
+                        <ul class='resa'>
+                            <p> {{resa.id}}</p>
+                            <li> Status : {{resa.status}}</li>
+                            <li> Destination hosts : 
+                                {%for stream in resa.streams %}
+                                    <span> ' {{stream.addrSrc}} '</span>
+                                {%endfor%}
+                            <li> tspec : {{resa.tspec}}</li>
+                        </ul>
+                    </li>
+                {%endfor%}
+            </ul>
+
+            <ul class='resa-wrapper'> 
+                <h4>Deleted reservations</h4>
+                {%for resa in Deleted_Reservations :%}
+                    <li>
+                        <ul class='resa'> 
+                            <p> {{resa.id}}</p>
+                            <li> Status : {{resa.status}}</li>
+                            <li> Destination hosts : 
+                                {%for stream in resa.streams %}
+                                    <span> ' {{stream.addrSrc}} '</span>
+                                {%endfor%}
+                            <li> tspec : {{resa.tspec}}</li>
+                        </ul>
+                    </li>
+                {%endfor%}
+            </ul>
+
+            <ul class='resa-wrapper'> 
+            <h4>Failed reservations</h4>
+                {%for resa in Failed_Reservations :%}
+                    <li>
+                        <ul class='resa'>
+                            <p> {{resa.id}}</p>
+                            <li> Status : {{resa.status}}</li>
+                            <li> Destination hosts : 
+                                {%for stream in resa.streams %}
+                                    <span> ' {{stream.addrSrc}} '</span>
+                                {%endfor%}
+                            <li> tspec : {{resa.tspec}}</li>
+                        </ul>
+                    </li>
+                {%endfor%}
+            </ul>
+        </div>
