@@ -42,16 +42,16 @@ def find_matching_resa(streams,Active_Reservations):
 #================================================================================#
 
 # Create CEs
-CE1= CE ('CE1', '193.168.1.11',)
-CE2= CE ('CE2', '193.168.2.22',)
-CE3= CE ('CE3', '193.168.3.33',)
+CE1= CE ('CE1', '192.168.1.2',)
+# CE2= CE ('CE2', '193.168.2.22',)
+# CE3= CE ('CE3', '193.168.3.33',)
 
 # Create SLAs 
 SLA1 = SLA(id='SLA1', clientNetwork=IPv4Network('192.168.1.0/24'), CE=CE1, capacity=1000)
-SLA2 = SLA(id='SLA2', clientNetwork=IPv4Network('192.168.2.0/24'), CE=CE2, capacity=1000)
-SLA3 = SLA(id='SLA3', clientNetwork=IPv4Network('192.168.3.0/24'), CE=CE3, capacity=1000)
+# SLA2 = SLA(id='SLA2', clientNetwork=IPv4Network('192.168.2.0/24'), CE=CE2, capacity=1000)
+# SLA3 = SLA(id='SLA3', clientNetwork=IPv4Network('192.168.3.0/24'), CE=CE3, capacity=1000)
 
-client_SLAs=[SLA1,SLA2,SLA3]
+client_SLAs=[SLA1]
 Active_Reservations=[]
 Deleted_Reservations=[]
 Failed_Reservations=[]
@@ -72,7 +72,7 @@ def dashboard():
 
     return render_template(
         "index.html",
-        client_SLAs=[SLA1,SLA2,SLA3],
+        client_SLAs=[SLA1],
         Active_Reservations=Active_Reservations,
         Deleted_Reservations=Deleted_Reservations,
         Failed_Reservations=Failed_Reservations,
