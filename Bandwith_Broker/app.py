@@ -42,9 +42,9 @@ def find_matching_resa(streams,Active_Reservations):
 #================================================================================#
 
 # Create CEs
-CE1= CE ('CE1', '192.168.1.2',)
-# CE2= CE ('CE2', '193.168.2.22',)
-# CE3= CE ('CE3', '193.168.3.33',)
+CE1= CE('CE1', '192.168.1.2')
+# CE2= CE ('CE2', '193.168.2.22')
+# CE3= CE ('CE3', '193.168.3.33')
 
 # Create SLAs 
 SLA1 = SLA(id='SLA1', clientNetwork=IPv4Network('192.168.1.0/24'), CE=CE1, capacity=1000)

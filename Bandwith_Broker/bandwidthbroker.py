@@ -15,21 +15,22 @@ def findPath(streams, client_SLAs):
 
     return path
 
-def getBookingConfig(streams, tspec,queue_id,interface):
+def getBookingConfig(streams, tspec, queue_id, interface):
     '''Return the list of commands to send to the router to protect all stream in streams acording to tspec'''
     config_commands =[]
     # Create a new queue
     config_commands.append(f'tc class add dev {interface} parent 1:1 classid 1:{queue_id} htb rate {tspec}kbit ceil {tspec * 1.1}kbit')
-    # Put packet with TOS=11 if control queue
-    config_commands.append(f'tc filter add dev {interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:10')
-    # set mark = 11 for packet comming from  192.168.1.0/24 = Proxy SIP
-    config_commands.append(f'iptables -A PREROUTING -t mangle -s 192.168.1.2/24 -j MARK --set-mark 11')
+    # Association mark <-> queue
+    config_commands.append(f'tc filter add dev {interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:{queue_id}')
+    # Association stream <-> mark
+    config_commands.append(f'iptables -A PREROUTING -t mangle -s {streams.addrSrc} -j MARK --set-mark 11')
     return config_commands
 
 def getUnBookingConfig(streams):
     '''Return the list of commands to send to the router to unprotect all stream in streams  '''
     config_commands =[]
     # TO DO !
+    # We have to find the id of the queue corresponding to thoses streams
     return config_commands
 
 def getInitConfig(premium_Br, Be_Br,interface,control_br):
@@ -50,6 +51,27 @@ def getInitConfig(premium_Br, Be_Br,interface,control_br):
     config_commands.append(f'iptables -A PREROUTING -t mangle -s 192.168.1.2/24 -j MARK --set-mark 11') #We miust update TOP 
     
     return config_commands
+
+
+def sshConfig(CE,config_commands):
+    client = paramiko.SSHClient()
+    # add to known hosts
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(hostname=CE.hostname, username=CE.username, password=CE.password)
+        print('\033[92m' + f'Connected to {CE.id}' + '\033[0m')
+    except:
+        print('\x1b[6;30;41m' + '("[!] Cannot connect to the SSH Server' + '\x1b[0m')
+        exit()
+
+    # execute the commands
+    for command in config_commands:
+        print('\033[1m' + command + '\033[0m')
+        stdin, stdout, stderr = client.exec_command(command)
+        print(stdout.read().decode())
+        err = stderr.read().decode()
+        if err:
+            print('\x1b[6;30;41m' + err + '\x1b[0m')
 
 #================================================================================#
 #==================================== Resa ======================================#
@@ -154,73 +176,18 @@ class CE :
         self.control_br = control_br
         self.next_queue_id = 20
 
-        # Init comande for setting up queue 
-        client = paramiko.SSHClient()
-
+        # Queue initialasation on the CE
         init_config_commands = getInitConfig(self.premium_Br, self.Be_Br,self.interface,self.control_br)
-
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            client.connect(hostname=self.ipAddress, username=self.username, password=self.password)
-        except:
-            print("[!] Cannot connect to the SSH Server")
-            exit()
-
-        # execute the commands
-        for command in init_config_commands:
-            print("="*50, command, "="*50)
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            err = stderr.read().decode()
-            if err:
-                print(err)
+        sshConfig(self,init_config_commands)
         print ("="*50, 'Initialisation over', "="*50)
-
 
     def book(self, streams, tspec) :
         config_commands = getBookingConfig(streams,tspec)
-        
-        # initialize the SSH client
-        client = paramiko.SSHClient()
-        # add to known hosts
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            client.connect(hostname=self.hostname, username=self.username, password=self.password)
-        except:
-            print("[!] Cannot connect to the SSH Server")
-            exit()
-
-        # execute the commands
-        for command in config_commands:
-            print("="*50, command, "="*50)
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            err = stderr.read().decode()
-            if err:
-                print(err)
-        print ("="*50, 'booking over', "="*50)
+        sshConfig(self,config_commands)
+        print('\x1b[6;30;42m' + 'Booking over!' + '\x1b[0m')
         self.next_queue_id +=1
 
     def unBook(self, streams) :
         config_commands = getUnBookingConfig(streams)
-        # We have to find the id of the queue corresponding to thoses streams
-        return
-        # initialize the SSH client
-        client = paramiko.SSHClient()
-        # add to known hosts
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            client.connect(hostname=self.hostname, username=self.username, password=self.password)
-        except:
-            print("[!] Cannot connect to the SSH Server")
-            exit()
-
-        # execute the commands
-        for command in config_commands:
-            print("="*50, command, "="*50)
-            stdin, stdout, stderr = client.exec_command(command)
-            print(stdout.read().decode())
-            err = stderr.read().decode()
-            if err:
-                print(err)
-        print ("="*50, 'unbooking over', "="*50)
+        sshConfig(self,config_commands)
+        print('\x1b[6;30;42m' + 'Unooking over!' + '\x1b[0m')
