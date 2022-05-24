@@ -14,7 +14,6 @@ marp: true
 ---
 
 <!-- _footer: 'Lauric Marthrin-John  - Théo Fontana - Vatosoa Razafiniary - Dimitrios Nixarlidris - Tomás Ubaldi - 4IR SC ' -->
-
 <style>
 img[alt="insa"] { 
   position: absolute;
