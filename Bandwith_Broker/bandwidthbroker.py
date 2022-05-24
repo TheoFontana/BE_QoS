@@ -15,15 +15,16 @@ def findPath(streams, client_SLAs):
 
     return path
 
-def getBookingConfig(streams, tspec, queue_id, interface):
+def getBookingConfig(CE,streams, tspec):
     '''Return the list of commands to send to the router to protect all stream in streams acording to tspec'''
     config_commands =[]
     # Create a new queue
-    config_commands.append(f'tc class add dev {interface} parent 1:1 classid 1:{queue_id} htb rate {tspec}kbit ceil {tspec * 1.1}kbit')
+    config_commands.append(f'tc class add dev {CE.interface} parent 1:1 classid 1:{CE.next_queue_id} htb rate {tspec}kbit ceil {tspec * 1.1}kbit')
     # Association mark <-> queue
-    config_commands.append(f'tc filter add dev {interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:{queue_id}')
+    config_commands.append(f'tc filter add dev {CE.interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:{CE.next_queue_id}')
     # Association stream <-> mark
-    config_commands.append(f'iptables -A PREROUTING -t mangle -s {streams.addrSrc} -j MARK --set-mark 11')
+    for stream in streams :
+        config_commands.append(f'iptables -A PREROUTING -t mangle -s {stream.addrSrc} -j MARK --set-mark 11')
     return config_commands
 
 def getUnBookingConfig(streams):
@@ -33,27 +34,32 @@ def getUnBookingConfig(streams):
     # We have to find the id of the queue corresponding to thoses streams
     return config_commands
 
-def getInitConfig(premium_Br, Be_Br,interface,control_br):
+def getInitConfig(CE,premium_br, BE_br,control_br):
     '''
         Return the list of commands to send to the router to unprotect all stream in streams  
         By default config on eth0
     '''
     config_commands =[]
-    config_commands.append(f'tc qdisc del dev {interface} root')
-    config_commands.append(f'tc qdisc add dev {interface} root handle 1: htb default 20')
-    config_commands.append(f'tc class add dev {interface} parent 1: classid 1:1 htb rate {premium_Br}kbit ceil {premium_Br}kbit')
-    config_commands.append(f'tc class add dev {interface} parent 1: classid 1:2 htb rate {Be_Br}kbit ceil{Be_Br}kbit')
-    config_commands.append(f'tc class add dev {interface} parent 1:1 classid 1:10 htb rate {control_br}kbit ceil {premium_Br}kbit')
+    config_commands.append(f'tc qdisc del dev {CE.interface} root')
+    config_commands.append(f'tc qdisc add dev {CE.interface} root handle 1: htb default 20')
+    config_commands.append(f'tc class add dev {CE.interface} parent 1: classid 1:1 htb rate {premium_br}kbit ceil {premium_br}kbit')
+    config_commands.append(f'tc class add dev {CE.interface} parent 1: classid 1:2 htb rate {BE_br}kbit ceil{premium_br}kbit')
+    config_commands.append(f'tc class add dev {CE.interface} parent 1:1 classid 1:10 htb rate {control_br}kbit ceil {premium_br}kbit')
     
-    # Put packet with TOS=11 if control queue
-    config_commands.append(f'tc filter add dev {interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:10')
-    # set mark = 11 for packet comming from  192.168.1.0/24 = Proxy SIP
-    config_commands.append(f'iptables -A PREROUTING -t mangle -s 192.168.1.2/24 -j MARK --set-mark 11') #We miust update TOP 
+    # Put packet with mark=11 if control queue
+    config_commands.append(f'tc filter add dev {CE.interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:10')
+
+    # Set mark = 11 for packet comming from  192.168.1.0/24 = Proxy SIP
+    config_commands.append(f'iptables -A PREROUTING -t mangle -s 192.168.1.2/24 -j MARK --set-mark 11') #We must update TOP 
+
+    # Set mark = 11 for packet adress to  192.168.1.0/24 = Proxy SIP ?
+    config_commands.append(f'iptables -A PREROUTING -t mangle -d 192.168.1.2/24 -j MARK --set-mark 11') #We must update TOP 
     
     return config_commands
 
 
 def sshConfig(CE,config_commands):
+    return
     client = paramiko.SSHClient()
     # add to known hosts
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -61,7 +67,7 @@ def sshConfig(CE,config_commands):
         client.connect(hostname=CE.hostname, username=CE.username, password=CE.password)
         print('\033[92m' + f'Connected to {CE.id}' + '\033[0m')
     except:
-        print('\x1b[6;30;41m' + '("[!] Cannot connect to the SSH Server' + '\x1b[0m')
+        print('\x1b[6;30;41m' + '[!] Cannot connect to the SSH Server' + '\x1b[0m')
         exit()
 
     # execute the commands
@@ -177,12 +183,12 @@ class CE :
         self.next_queue_id = 20
 
         # Queue initialasation on the CE
-        init_config_commands = getInitConfig(self.premium_Br, self.Be_Br,self.interface,self.control_br)
+        init_config_commands = getInitConfig(self, self.premium_Br, self.Be_Br,self.control_br)
         sshConfig(self,init_config_commands)
         print ("="*50, 'Initialisation over', "="*50)
 
     def book(self, streams, tspec) :
-        config_commands = getBookingConfig(streams,tspec)
+        config_commands = getBookingConfig(self, streams,tspec)
         sshConfig(self,config_commands)
         print('\x1b[6;30;42m' + 'Booking over!' + '\x1b[0m')
         self.next_queue_id +=1
