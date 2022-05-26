@@ -29,12 +29,12 @@ img[alt="insa"] {
 
 ---
 
-## Sumary
+## Summary
 
 1. Introduction
 2. Objectives
 3. Realisation
-4. Demonstation
+4. Demonstration
 5. Discussion
 6. Conclusion
 
@@ -42,10 +42,12 @@ img[alt="insa"] {
 ## Introduction
 
 
----
-## Objective
 
-We need to insure :
+
+---
+## Objectives
+
+We need to ensure :
 * Connectivity between hosts on all client's sites
 * QoS for VoIP applications
 
@@ -54,8 +56,8 @@ We need to insure :
 ## Realisation
 
 * Core network using MPLS 
-* VPN-IP tunnel for connection client's sites
-* Bandwidth Broker is Python web app
+* VPN-IP tunnel for establishing connection between client's sites
+* Bandwidth Broker is a python web application
 * Proxy SIP exchange with the BB via http requests
 
 ---
@@ -66,7 +68,7 @@ We need to insure :
 ---
 ## Proxy SIP
 
-![SIP_screenshot](/slide_assets/SIP_screenshot.png)
+![SIP_screenshot](./slide_assets/SIP_screenshot.png)
 <style>
 img[alt="SIP_screenshot"] { 
   width:  95%; 
@@ -82,12 +84,11 @@ process ReponseStatelessly()
     if (cseqHeader.getMethod().equals("INVITE")) {
         SIPREsponse sr = (SIPREsponse) response 
     }
-
 ```
 
 ---
 
-## Bandwith Broker
+## Bandwidth Broker
 
 Initialisation
 
@@ -109,7 +110,7 @@ Failed_Reservations=[]
 ```
 ---
 
-## Bandwith Broker
+## Bandwidth Broker
 
 Ask for a reservation
 
@@ -149,7 +150,7 @@ CE configuration for a new reservation
 
 ## Bandwidth Broker
 
-Cancel a reservaion
+Cancel a reservation
 
 ```Python
 @app.route('/remove-resa', methods=['GET'])
@@ -170,4 +171,3 @@ def remove():
 
     return 'Bad request', 400
 ```
-

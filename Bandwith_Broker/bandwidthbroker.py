@@ -5,7 +5,9 @@
 import paramiko
 
 def findPath(streams, client_SLAs):
-    '''Return the destination's SLA for every stream in `streams` '''
+    '''
+        Return the destination's SLA for every stream in `streams` 
+    '''
 
     path =[]
     for stream in streams :
@@ -16,19 +18,27 @@ def findPath(streams, client_SLAs):
     return path
 
 def getBookingConfig(CE,streams, tspec):
-    '''Return the list of commands to send to the router to protect all stream in streams acording to tspec'''
+    '''
+        Return the list of commands to send to the router to protect all stream based on the tspec requested
+    '''
     config_commands =[]
     # Create a new queue
-    config_commands.append(f'tc class add dev {CE.interface} parent 1:1 classid 1:{CE.next_queue_id} htb rate {tspec}kbit ceil {tspec * 1.1}kbit')
+    config_commands.append(f'tc class add dev {CE.interface} parent 1:1 classid 1:{CE.next_queue_id} htb rate {tspec}kbit ceil {tspec * 1.5}kbit')
     # Association mark <-> queue
     config_commands.append(f'tc filter add dev {CE.interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:{CE.next_queue_id}')
     # Association stream <-> mark
     for stream in streams :
-        config_commands.append(f'iptables -A PREROUTING -t mangle -s {stream.addrSrc} -j MARK --set-mark 11')
+        # Set the MARK based on destination address
+        config_commands.append(f'iptables -A PREROUTING -t mangle -d {stream.addrDest} -j MARK --set-mark 11')
+        # Set TOS on post Routing
+        config_commands.append(f'iptables -A POSTROUTING -t mangle -d {stream.addrDest} -j DSCP --set-DSCP EF')
+
     return config_commands
 
 def getUnBookingConfig(streams):
-    '''Return the list of commands to send to the router to unprotect all stream in streams  '''
+    '''
+        Return the list of commands to send to the router to cancel ressources reservation 
+    '''
     config_commands =[]
     # TO DO !
     # We have to find the id of the queue corresponding to thoses streams
@@ -37,7 +47,6 @@ def getUnBookingConfig(streams):
 def getInitConfig(CE,premium_br, BE_br,control_br):
     '''
         Return the list of commands to send to the router to unprotect all stream in streams  
-        By default config on eth0
     '''
     config_commands =[]
     config_commands.append(f'tc qdisc del dev {CE.interface} root')
@@ -59,9 +68,7 @@ def getInitConfig(CE,premium_br, BE_br,control_br):
 
 
 def sshConfig(CE,config_commands):
-    return
     client = paramiko.SSHClient()
-    # add to known hosts
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         client.connect(hostname=CE.hostname, username=CE.username, password=CE.password)
@@ -171,29 +178,44 @@ class SLA :
 #================================================================================#
 
 class CE :
-    def __init__(self,id, ipAddress, username='root', password='7nains',premium_Br='700', Be_Br='57900', interface='eth0',control_br='600'):
+    def __init__(self,id, ipAddress, username='root', password='7nains',premium_br='1000', BE_br='5000', interface='eth0',control_br='100'):
         self.id = id
         self.ipAddress = ipAddress
         self.username = username
         self.password = password
-        self.premium_Br = premium_Br
-        self.Be_Br = Be_Br
+        self.premium_br = premium_br
+        self.BE_br = BE_br
         self.interface = interface
         self.control_br = control_br
         self.next_queue_id = 20
 
         # Queue initialasation on the CE
-        init_config_commands = getInitConfig(self, self.premium_Br, self.Be_Br,self.control_br)
-        sshConfig(self,init_config_commands)
+        init_config_commands = getInitConfig(self, self.premium_br, self.BE_br,self.control_br)
+        # sshConfig(self,init_config_commands)
+
+        # Only for demo
+        for command in init_config_commands :
+            print(command)
+        
         print ("="*50, 'Initialisation over', "="*50)
 
     def book(self, streams, tspec) :
         config_commands = getBookingConfig(self, streams,tspec)
-        sshConfig(self,config_commands)
+        # sshConfig(self,config_commands)
+        
+        # Only for demo
+        for command in config_commands :
+            print(command)
+        
         print('\x1b[6;30;42m' + 'Booking over!' + '\x1b[0m')
         self.next_queue_id +=1
 
     def unBook(self, streams) :
         config_commands = getUnBookingConfig(streams)
-        sshConfig(self,config_commands)
+        # sshConfig(self,config_commands)
+
+        # Only for demo
+        for command in config_commands :
+            print(command)
+        
         print('\x1b[6;30;42m' + 'Unooking over!' + '\x1b[0m')
