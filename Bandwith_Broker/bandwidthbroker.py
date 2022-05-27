@@ -3,6 +3,7 @@
 #================================================================================#
 
 import paramiko
+#from ipaddress import IPv4Network, IPv4Interface, ip_address
 
 def findPath(streams, client_SLAs):
     '''
@@ -26,12 +27,12 @@ def getBookingConfig(CE,streams, tspec):
     config_commands.append(f'tc class add dev {CE.interface} parent 1:1 classid 1:{CE.next_queue_id} htb rate {tspec}kbit ceil {tspec * 1.5}kbit')
     # Association mark <-> queue
     config_commands.append(f'tc filter add dev {CE.interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:{CE.next_queue_id}')
-    # Association stream <-> mark
     for stream in streams :
-        # Set the MARK based on destination address
-        config_commands.append(f'iptables -A PREROUTING -t mangle -d {stream.addrDest} -j MARK --set-mark 11')
-        # Set TOS on post Routing
-        config_commands.append(f'iptables -A POSTROUTING -t mangle -d {stream.addrDest} -j DSCP --set-DSCP EF')
+        if CE.ipAddress.network == stream.addrSrc.network :
+            # Set the MARK based on destination address
+            config_commands.append(f'iptables -A PREROUTING -t mangle -d {stream.addrDest.ip} -j MARK --set-mark 11')
+            # Set the DSCP field to ensure QoS in core network
+            config_commands.append(f'iptables -A POSTROUTING -t mangle -d {stream.addrDest.ip} -j DSCP --set-DSCP EF')
 
     return config_commands
 
@@ -40,38 +41,42 @@ def getUnBookingConfig(streams):
         Return the list of commands to send to the router to cancel ressources reservation 
     '''
     config_commands =[]
-    # TO DO !
-    # We have to find the id of the queue corresponding to thoses streams
+    # TO DO 
     return config_commands
 
-def getInitConfig(CE,premium_br, BE_br,control_br):
+def getInitConfig(CE):
     '''
         Return the list of commands to send to the router to unprotect all stream in streams  
     '''
     config_commands =[]
+    # Create the HTB structure
     config_commands.append(f'tc qdisc del dev {CE.interface} root')
-    config_commands.append(f'tc qdisc add dev {CE.interface} root handle 1: htb default 20')
-    config_commands.append(f'tc class add dev {CE.interface} parent 1: classid 1:1 htb rate {premium_br}kbit ceil {premium_br}kbit')
-    config_commands.append(f'tc class add dev {CE.interface} parent 1: classid 1:2 htb rate {BE_br}kbit ceil{premium_br}kbit')
-    config_commands.append(f'tc class add dev {CE.interface} parent 1:1 classid 1:10 htb rate {control_br}kbit ceil {premium_br}kbit')
+    config_commands.append(f'tc qdisc add dev {CE.interface} root handle 1: htb default 2')
+    config_commands.append(f'tc class add dev {CE.interface} parent 1: classid 1:1 htb rate {CE.premium_br}kbit ceil {CE.premium_br}kbit')
+    config_commands.append(f'tc class add dev {CE.interface} parent 1: classid 1:2 htb rate 0kbit ceil {CE.premium_br}kbit')
     
-    # Put packet with mark=11 if control queue
+    config_commands.append(f'tc class add dev {CE.interface} parent 1:1 classid 1:10 htb rate {CE.control_br}kbit ceil {CE.premium_br}kbit')
+    # Put packet with mark=11 in the control queue
     config_commands.append(f'tc filter add dev {CE.interface} parent 1:0 protocol ip prio 1 handle 11 fw flowid 1:10')
-
-    # Set mark = 11 for packet comming from  192.168.1.0/24 = Proxy SIP
-    config_commands.append(f'iptables -A PREROUTING -t mangle -s 192.168.1.2/24 -j MARK --set-mark 11') #We must update TOP 
-
-    # Set mark = 11 for packet adress to  192.168.1.0/24 = Proxy SIP ?
-    config_commands.append(f'iptables -A PREROUTING -t mangle -d 192.168.1.2/24 -j MARK --set-mark 11') #We must update TOP 
+    # Set mark = 11 for packet addessed to 192.168.1.2 = Proxy SIP
+    config_commands.append(f'iptables -A PREROUTING -t mangle -d 192.168.1.2 -j MARK --set-mark 11')
+    #Set the DSCP field to ensure QoS in core network
+    config_commands.append(f'iptables -A POSTROUTING -t mangle -d 192.168.1.2 -j DSCP --set-DSCP EF')
     
     return config_commands
 
 
 def sshConfig(CE,config_commands):
+    
+    #Only for demo
+    print('\033[92m' + f'Connected to {CE.id}' + '\033[0m') 
+    # for command in config_commands:
+    #         print(command)
+    # return
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        client.connect(hostname=CE.hostname, username=CE.username, password=CE.password)
+        client.connect(hostname=CE.ipAddress.ip, username=CE.username, password=CE.password)
         print('\033[92m' + f'Connected to {CE.id}' + '\033[0m')
     except:
         print('\x1b[6;30;41m' + '[!] Cannot connect to the SSH Server' + '\x1b[0m')
@@ -178,44 +183,28 @@ class SLA :
 #================================================================================#
 
 class CE :
-    def __init__(self,id, ipAddress, username='root', password='7nains',premium_br='1000', BE_br='5000', interface='eth0',control_br='100'):
+    def __init__(self,id, ipAddress, username='root', password='7nains',premium_br='1000', interface='eth0',control_br='100'):
         self.id = id
         self.ipAddress = ipAddress
         self.username = username
         self.password = password
         self.premium_br = premium_br
-        self.BE_br = BE_br
         self.interface = interface
         self.control_br = control_br
         self.next_queue_id = 20
 
         # Queue initialasation on the CE
-        init_config_commands = getInitConfig(self, self.premium_br, self.BE_br,self.control_br)
-        # sshConfig(self,init_config_commands)
-
-        # Only for demo
-        for command in init_config_commands :
-            print(command)
-        
-        print ("="*50, 'Initialisation over', "="*50)
+        init_config_commands = getInitConfig(self)
+        sshConfig(self,init_config_commands)
+        print ('\n','\x1b[6;30;42m' + '='*10, f'Initialisation over on {self.id}', '='*10 + '\x1b[0m','\n')
 
     def book(self, streams, tspec) :
         config_commands = getBookingConfig(self, streams,tspec)
-        # sshConfig(self,config_commands)
-        
-        # Only for demo
-        for command in config_commands :
-            print(command)
-        
-        print('\x1b[6;30;42m' + 'Booking over!' + '\x1b[0m')
+        sshConfig(self,config_commands)
+        print('\x1b[6;30;42m' + f'Booking over' + '\x1b[0m')
         self.next_queue_id +=1
 
     def unBook(self, streams) :
         config_commands = getUnBookingConfig(streams)
-        # sshConfig(self,config_commands)
-
-        # Only for demo
-        for command in config_commands :
-            print(command)
-        
-        print('\x1b[6;30;42m' + 'Unooking over!' + '\x1b[0m')
+        sshConfig(self,config_commands)
+        print('\x1b[6;30;42m' + 'Unooking over' + '\x1b[0m')

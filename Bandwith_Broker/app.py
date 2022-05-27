@@ -3,7 +3,7 @@
 #================================================================================#
 
 from flask import Flask, request, render_template
-from ipaddress import IPv4Network, ip_address
+from ipaddress import IPv4Network, IPv4Interface, ip_address
 from bandwidthbroker import Stream, Resa, CE, SLA
 
 def getStreamsfromJson(streams):
@@ -18,11 +18,10 @@ def getStreamsfromJson(streams):
         params = None
         if 'protocol' in stream :
             params = stream['params']
-            
         new_stream = Stream(
             portDest=stream['portDest'],
-            addrDest=ip_address(stream['addrDest']),
-            addrSrc=ip_address(stream['addrSrc']),
+            addrDest=IPv4Interface(stream['addrDest']+'/24'),
+            addrSrc=IPv4Interface(stream['addrSrc']+'/24'),
             portSrc=stream['portSrc'],
             protocol=protocol,
             codec=codec,
@@ -42,9 +41,9 @@ def find_matching_resa(streams,Active_Reservations):
 #================================================================================#
 
 # Create CEs
-CE1= CE('CE1', '192.168.1.2')
-CE2= CE ('CE2', '193.168.2.22')
-CE3= CE ('CE3', '193.168.3.33')
+CE1= CE('CE1', IPv4Interface('192.168.1.254/24'))
+CE2= CE ('CE2', IPv4Interface('192.168.2.254/24'))
+CE3= CE ('CE3', IPv4Interface('192.168.3.254/24'))
 
 # Create SLAs 
 SLA1 = SLA(id='SLA1', clientNetwork=IPv4Network('192.168.1.0/24'), CE=CE1, capacity=1000)

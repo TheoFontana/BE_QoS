@@ -32,10 +32,12 @@
                         <ul class='resa'>
                             <p> {{resa.id}}</p>
                             <li> Status : {{resa.status}}</li>
-                            <li> Destination hosts : 
-                                {%for stream in resa.streams %}
-                                    <span> ' {{stream.addrSrc}} '</span>
-                                {%endfor%}
+                            <li > Destination hosts : 
+                                <ul>
+                                    {%for stream in resa.streams %}
+                                    <li>{{stream.addrDest.ip}}</li>
+                                    {%endfor%}
+                                </ul>
                             <li> tspec : {{resa.tspec}}</li>
                         </ul>
                     </li>
@@ -50,9 +52,11 @@
                             <p> {{resa.id}}</p>
                             <li> Status : {{resa.status}}</li>
                             <li> Destination hosts : 
-                                {%for stream in resa.streams %}
-                                    <span> ' {{stream.addrSrc}} '</span>
-                                {%endfor%}
+                                <ul>
+                                    {%for stream in resa.streams %}
+                                    <li>{{stream.addrDest.ip}}</li>
+                                    {%endfor%}
+                                </ul>
                             <li> tspec : {{resa.tspec}}</li>
                         </ul>
                     </li>
@@ -67,9 +71,11 @@
                             <p> {{resa.id}}</p>
                             <li> Status : {{resa.status}}</li>
                             <li> Destination hosts : 
-                                {%for stream in resa.streams %}
-                                    <span> ' {{stream.addrSrc}} '</span>
-                                {%endfor%}
+                                <ul>
+                                    {%for stream in resa.streams %}
+                                    <li>{{stream.addrDest.ip}}</li>
+                                    {%endfor%}
+                                </ul>
                             <li> tspec : {{resa.tspec}}</li>
                         </ul>
                     </li>
